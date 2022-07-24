@@ -20,7 +20,8 @@ class Listbox(sg.Listbox):
         window.refresh()
 
     def doubleClickEvent(self, e):
-        open_file(self.QT_ListWidget.itemAt(e.pos().x(), e.pos().y()).text())
+        ManageFiles.open_file(self.QT_ListWidget.itemAt(
+            e.pos().x(), e.pos().y()).text())
 
     def enable_drop(self):
         self.Widget.setAcceptDrops(True)
@@ -32,39 +33,36 @@ class Listbox(sg.Listbox):
         self.Widget.mouseDoubleClickEvent = self.doubleClickEvent
 
 
-def search(values, window):
-    global results
-    window['LISTBOX'].update(values=results)
+class ManageFiles():
+    def search(values, window):
+        global results
+        window['LISTBOX'].update(values=results)
 
-    for root, _, files in os.walk(values['PATH']):
-        for file in files:
-            file = f'{root}\\{file}'.replace('\\', '/')
-            if file not in results:
-                if values['TERM'].lower() in file.lower():
-                    results.append(file)
-                    window['LISTBOX'].update(results)
+        for root, _, files in os.walk(values['PATH']):
+            for file in files:
+                file = f'{root}\\{file}'.replace('\\', '/')
+                if file not in results:
+                    if values['TERM'].lower() in file.lower():
+                        results.append(file)
+                        window['LISTBOX'].update(results)
 
+    def open_file(file_name):
+        print('Opening: ' + file_name)
+        os.startfile(file_name)
 
-def open_file(file_name):
-    print('Opening: ' + file_name)
-    os.startfile(file_name)
+    def open_selected(self):
+        for f in window['LISTBOX'].get():
+            self.open_file(f)
 
+    def open_all(self):
+        for f in window['LISTBOX'].get_list_values():
+            self.open_file(f)
 
-def open_selected():
-    for f in window['LISTBOX'].get():
-        open_file(f)
-
-
-def open_all():
-    for f in window['LISTBOX'].get_list_values():
-        open_file(f)
-
-
-def suppr_selected():
-    items = window['LISTBOX'].get_list_values()
-    selectedItems = window['LISTBOX'].get()
-    items = list(set(items) - set(selectedItems))
-    window['LISTBOX'].update(items)
+    def suppr_selected():
+        items = window['LISTBOX'].get_list_values()
+        selectedItems = window['LISTBOX'].get()
+        items = list(set(items) - set(selectedItems))
+        window['LISTBOX'].update(items)
 
 
 results = []
@@ -92,11 +90,6 @@ while True:
         break
     if event == 'SEARCH' or event == 'special 16777220' and 'TERM' != '' and 'PATH' != '':
         search(values, window)
-    if event == 'LISTBOX':
-        pass
-        # file_name = values['LISTBOX']
-        # if file_name:
-        #     open_file(file_name[0])
     if event == 'OPEN':
         open_selected()
     if event == 'OPEN_ALL':
