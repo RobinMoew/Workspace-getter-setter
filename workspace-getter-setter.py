@@ -50,9 +50,21 @@ def open_file(file_name):
     os.startfile(file_name)
 
 
+def open_selected():
+    for f in window['LISTBOX'].get():
+        open_file(f)
+
+
 def open_all():
     for f in window['LISTBOX'].get_list_values():
         open_file(f)
+
+
+def suppr_selected():
+    items = window['LISTBOX'].get_list_values()
+    selectedItems = window['LISTBOX'].get()
+    items = list(set(items) - set(selectedItems))
+    window['LISTBOX'].update(items)
 
 
 results = []
@@ -62,8 +74,10 @@ layout = [
         '', size=(40, 1), key='TERM')],
     [sg.Text('dans', size=(11, 1)), sg.Input('', size=(40, 1), key='PATH'),
      sg.FolderBrowse('Parcourir', size=(10, 1), key='BROWSE'),
-     sg.Button('Rechercher', size=(10, 1), key='SEARCH'),
-     sg.Button('Ouvrir tout', size=(10, 1), key='OPEN')],
+     sg.Button('Rechercher', size=(10, 1), key='SEARCH')],
+    [sg.Button('Ouvrir tout', size=(10, 1), key='OPEN_ALL'),
+     sg.Button('Ouvrir', size=(10, 1), key='OPEN'),
+     sg.Button('Supprimer', size=(10, 1), key='SUPPR')],
     [Listbox(values=results, size=(100, 10), enable_events=True, key='LISTBOX')]]
 
 window = sg.Window('Work spaces', layout=layout,
@@ -84,4 +98,8 @@ while True:
         # if file_name:
         #     open_file(file_name[0])
     if event == 'OPEN':
+        open_selected()
+    if event == 'OPEN_ALL':
         open_all()
+    if event == 'SUPPR':
+        suppr_selected()
