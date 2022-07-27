@@ -3,6 +3,8 @@ import PySimpleGUIQt as sg
 import os
 import json
 
+from numpy import empty
+
 
 class Listbox(sg.Listbox):
 
@@ -37,10 +39,6 @@ class Listbox(sg.Listbox):
 
     def enable_double_click(self):
         self.Widget.mouseDoubleClickEvent = self.doubleClickEvent
-
-
-def checkWorkspace():
-    pass
 
 
 def search(values):
@@ -90,29 +88,38 @@ def addWorkspace(workspaceName):
         window['WORKSPACE_LISTBOX'].update(workspaces_results)
 
 
-def setWorkspace(workspace, pathList):
-    with open(workspace, 'w') as file:
-        json.dump(pathList, file, indent=2)
+def saveWorkspace(workspace, pathList):
+    if [] != pathList:
+        data = getJsonFromFile()
+        workspaceWithPaths = {workspace: pathList}
+        # saveToJson = data + workspaceWithPaths => Voir comment faire -> 'merge' 2 dict sans dupliquer les valeurs avant de réécrire le JSON
+        with open('./workspaces.json', 'w') as file:
+            json.dump(saveToJson, file)
+            file.close()
+        window['INFO'].update('Workspace ' + workspace + ' sauvegardé.')
 
 
 def getPathsfromWorkspaceName(workspaceName):
     path_results = []
-    with open('./workspaces.json', 'r') as file:
-        data = json.load(file)
-        for path in data[workspaceName]:
-            path_results.append(path)
-            window['PATH_LISTBOX'].update(path_results)
-        file.close()
+    data = getJsonFromFile()
+    for path in data[workspaceName]:
+        path_results.append(path)
+        window['PATH_LISTBOX'].update(path_results)
 
 
 def loadWorkspace():
+    data = getJsonFromFile()
+    workspaces = list(data.keys())
+    for workspace in workspaces:
+        workspaces_results.append(workspace)
+        addWorkspace(workspace)
+
+
+def getJsonFromFile():
     with open('./workspaces.json', 'r') as file:
         data = json.load(file)
-        workspaces = list(data.keys())
-        for workspace in workspaces:
-            workspaces_results.append(workspace)
-            addWorkspace(workspace)
         file.close()
+    return data
 
 
 path_results = []
@@ -142,6 +149,10 @@ layout = [
                 enable_events=True, key='WORKSPACE_LISTBOX'),
         Listbox(values=path_results, size=(80, 10),
                 enable_events=True, key='PATH_LISTBOX')
+    ],
+    [
+        sg.Input('Hello, tu peux commencer à ajouter des workspaces et des fichiers 👽',
+                 key='INFO', disabled=True, size=(100.4, 1))
     ]
 ]
 add_workspace_popup = [
@@ -153,19 +164,23 @@ add_workspace_popup = [
 
 window = sg.Window('Work spaces', layout=layout,
                    finalize=True, return_keyboard_events=True)
+window['WORKSPACE_LISTBOX'].enable_double_click()
 window['PATH_LISTBOX'].enable_drop()
 window['PATH_LISTBOX'].enable_double_click()
-window['WORKSPACE_LISTBOX'].enable_double_click()
 
 loadWorkspace()
 
 # main event loop
 while True:
     event, values = window.read()
+    print(event)
     if event is None:
         break
     if event == 'SEARCH' and 'TERM' != '' and 'PATH' != '':
         search(values)
+        workspaceName = window['WORKSPACE_LISTBOX'].get()[0]
+        paths = window['PATH_LISTBOX'].get_list_values()
+        saveWorkspace(workspaceName, paths)
     if event == 'ADD':
         workspaceName = sg.popup_get_text(
             'Nom: ',
@@ -179,4 +194,5 @@ while True:
     if event in ('SUPPR_PATH_LISTBOX', 'SUPPR_WORKSPACE_LISTBOX'):
         suppr_selected(event.removeprefix('SUPPR_'))
     if event == 'WORKSPACE_LISTBOX':
-        getPathsfromWorkspaceName(window['WORKSPACE_LISTBOX'].get()[0])
+        workspaceName = window['WORKSPACE_LISTBOX'].get()[0]
+        getPathsfromWorkspaceName(workspaceName)
