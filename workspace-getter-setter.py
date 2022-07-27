@@ -1,3 +1,4 @@
+from asyncio.windows_events import NULL
 import PySimpleGUIQt as sg
 import os
 import json
@@ -71,23 +72,21 @@ def open_all():
 
 
 def suppr_selected(listbox):
-    print(listbox)
     items = window[listbox].get_list_values()
     selectedItems = window[listbox].get()
     items = list(set(items) - set(selectedItems))
     window[listbox].update(items)
+    if 'WORKSPACE_LISTBOX' == listbox:
+        workspaces_results.remove(selectedItems[0])
     listbox = ''
 
 
-def addWorkspace():
+def addWorkspace(workspaceName):
     global workspaces_results
     window['WORKSPACE_LISTBOX'].update(values=workspaces_results)
-    workspace_name = sg.popup_get_text(
-        'Nom: ',
-        keep_on_top=True
-    )
-    if workspace_name not in workspaces_results:
-        workspaces_results.append(workspace_name)
+
+    if workspaceName not in workspaces_results:
+        workspaces_results.append(workspaceName)
         window['WORKSPACE_LISTBOX'].update(workspaces_results)
 
 
@@ -96,10 +95,24 @@ def setWorkspace(workspace, pathList):
         json.dump(pathList, file, indent=2)
 
 
-def getWorkspace(workspace):
-    with open(workspace, 'w') as file:
-        print(file)
-        json.dump(file)
+def getPathsfromWorkspaceName(workspaceName):
+    path_results = []
+    with open('./workspaces.json', 'r') as file:
+        data = json.load(file)
+        for path in data[workspaceName]:
+            path_results.append(path)
+            window['PATH_LISTBOX'].update(path_results)
+        file.close()
+
+
+def loadWorkspace():
+    with open('./workspaces.json', 'r') as file:
+        data = json.load(file)
+        workspaces = list(data.keys())
+        for workspace in workspaces:
+            workspaces_results.append(workspace)
+            addWorkspace(workspace)
+        file.close()
 
 
 path_results = []
@@ -144,6 +157,8 @@ window['PATH_LISTBOX'].enable_drop()
 window['PATH_LISTBOX'].enable_double_click()
 window['WORKSPACE_LISTBOX'].enable_double_click()
 
+loadWorkspace()
+
 # main event loop
 while True:
     event, values = window.read()
@@ -152,13 +167,16 @@ while True:
     if event == 'SEARCH' and 'TERM' != '' and 'PATH' != '':
         search(values)
     if event == 'ADD':
-        addWorkspace()
+        workspaceName = sg.popup_get_text(
+            'Nom: ',
+            keep_on_top=True
+        )
+        addWorkspace(workspaceName)
     if event == 'OPEN':
         open_selected()
     if event == 'OPEN_ALL':
         open_all()
-    if event == 'SUPPR_PATH_LISTBOX' or event == 'SUPPR_WORKSPACE_LISTBOX':
+    if event in ('SUPPR_PATH_LISTBOX', 'SUPPR_WORKSPACE_LISTBOX'):
         suppr_selected(event.removeprefix('SUPPR_'))
     if event == 'WORKSPACE_LISTBOX':
-        print(window['WORKSPACE_LISTBOX'].get())
-        # getWorkspace(values['WORKSPACE_LISTBOX'])
+        getPathsfromWorkspaceName(window['WORKSPACE_LISTBOX'].get()[0])
