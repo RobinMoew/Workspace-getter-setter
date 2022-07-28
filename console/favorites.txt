@@ -1,7 +1,0 @@
-https://www.pythontutorial.net/python-basics/python-read-text-file/
-"E:\Images truc\FWv.540x304.jpeg"
-https://www.imdb.com/
-http://fr.twitch.tv/directory
-"C:\Users\rmarc\Projet\desktop_favorites\favorites.txt"
-"E:\Robin\Documents\RIB.png"
-"E:\Robin\Documents\CV\modeles\cv.indd"
