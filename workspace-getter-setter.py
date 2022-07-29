@@ -1,9 +1,7 @@
-from asyncio.windows_events import NULL
 import PySimpleGUIQt as sg
+import PySimpleGUI as pysg
 import os
 import json
-
-from numpy import empty
 
 
 class Listbox(sg.Listbox):
@@ -22,6 +20,12 @@ class Listbox(sg.Listbox):
         data.extend(items)
         window['PATH_LISTBOX'].update(data)
         window.refresh()
+        if ([] == window['WORKSPACE_LISTBOX'].get() and [] != window['WORKSPACE_LISTBOX'].get_list_values()):
+            workspaceName = window['WORKSPACE_LISTBOX'].get_list_values()[-1]
+            saveWorkspace(workspaceName)
+        elif ([] != window['WORKSPACE_LISTBOX'].get()):
+            workspaceName = window['WORKSPACE_LISTBOX'].get()[0]
+            saveWorkspace(workspaceName)
 
     def doubleClickEvent(self, e):
         if 'PATH_LISTBOX' == self.Key:
@@ -52,10 +56,12 @@ def search(values):
                 if values['TERM'].lower() in file.lower():
                     path_results.append(file)
                     window['PATH_LISTBOX'].update(path_results)
+    path_results = []
 
 
 def open_file(file_name):
-    print('Opening: ' + file_name)
+    window['INFO'].update('Info: Ouverture du fichier: ' +
+                          file_name, text_color='blue')
     os.startfile(file_name)
 
 
@@ -74,8 +80,11 @@ def suppr_selected(listbox):
     selectedItems = window[listbox].get()
     items = list(set(items) - set(selectedItems))
     window[listbox].update(items)
-    if 'WORKSPACE_LISTBOX' == listbox:
+    if 'WORKSPACE_LISTBOX' == listbox and [] != selectedItems:
         workspaces_results.remove(selectedItems[0])
+        window['PATH_LISTBOX'].update([])
+        window['INFO'].update('Info: "' + selectedItems[0] +
+                              '" supprimé', text_color='blue')
     listbox = ''
 
 
@@ -86,25 +95,32 @@ def addWorkspace(workspaceName):
     if workspaceName not in workspaces_results:
         workspaces_results.append(workspaceName)
         window['WORKSPACE_LISTBOX'].update(workspaces_results)
+    else:
+        window['INFO'].update('Erreur: "' + workspaceName +
+                              '" déjà présent dans la liste', text_color='red')
 
 
-def saveWorkspace(workspace, pathList):
-    if [] != pathList:
+def saveWorkspace(workspace):
+    if ('ADD' != event):
+        pathList = window['PATH_LISTBOX'].get_list_values()
         data = getJsonFromFile()
         workspaceWithPaths = {workspace: pathList}
-        # saveToJson = data + workspaceWithPaths => Voir comment faire -> 'merge' 2 dict sans dupliquer les valeurs avant de réécrire le JSON
+        data.update(workspaceWithPaths)
+        if ([] == data[workspace]):
+            data.pop(workspace, '')
         with open('./workspaces.json', 'w') as file:
-            json.dump(saveToJson, file)
+            json.dump(data, file)
             file.close()
-        window['INFO'].update('Workspace ' + workspace + ' sauvegardé.')
 
 
 def getPathsfromWorkspaceName(workspaceName):
+    window['PATH_LISTBOX'].update([])
     path_results = []
     data = getJsonFromFile()
-    for path in data[workspaceName]:
-        path_results.append(path)
-        window['PATH_LISTBOX'].update(path_results)
+    if workspaceName in data:
+        for path in data[workspaceName]:
+            path_results.append(path)
+            window['PATH_LISTBOX'].update(path_results)
 
 
 def loadWorkspace():
@@ -170,29 +186,36 @@ window['PATH_LISTBOX'].enable_double_click()
 
 loadWorkspace()
 
-# main event loop
-while True:
-    event, values = window.read()
-    print(event)
-    if event is None:
-        break
-    if event == 'SEARCH' and 'TERM' != '' and 'PATH' != '':
-        search(values)
-        workspaceName = window['WORKSPACE_LISTBOX'].get()[0]
-        paths = window['PATH_LISTBOX'].get_list_values()
-        saveWorkspace(workspaceName, paths)
-    if event == 'ADD':
-        workspaceName = sg.popup_get_text(
-            'Nom: ',
-            keep_on_top=True
-        )
-        addWorkspace(workspaceName)
-    if event == 'OPEN':
-        open_selected()
-    if event == 'OPEN_ALL':
-        open_all()
-    if event in ('SUPPR_PATH_LISTBOX', 'SUPPR_WORKSPACE_LISTBOX'):
-        suppr_selected(event.removeprefix('SUPPR_'))
-    if event == 'WORKSPACE_LISTBOX':
-        workspaceName = window['WORKSPACE_LISTBOX'].get()[0]
-        getPathsfromWorkspaceName(workspaceName)
+try:
+    while True:
+        event, values = window.read()
+        if event is None:
+            break
+        if event == 'SEARCH' and 'TERM' != '' and 'PATH' != '':
+            search(values)
+            if ([] != window['WORKSPACE_LISTBOX'].get()):
+                workspaceName = window['WORKSPACE_LISTBOX'].get()[0]
+                saveWorkspace(workspaceName)
+        if event == 'ADD':
+            workspaceName = sg.popup_get_text(
+                'Nom: ',
+                keep_on_top=True
+            )
+            if ('' != workspaceName):
+                addWorkspace(workspaceName)
+        if event == 'OPEN':
+            open_selected()
+        if event == 'OPEN_ALL':
+            open_all()
+        if event in ('SUPPR_PATH_LISTBOX', 'SUPPR_WORKSPACE_LISTBOX'):
+            if ([] != window['WORKSPACE_LISTBOX'].get()):
+                workspaceName = window['WORKSPACE_LISTBOX'].get()[0]
+                suppr_selected(event.removeprefix('SUPPR_'))
+                saveWorkspace(workspaceName)
+        if event == 'WORKSPACE_LISTBOX':
+            if ([] != window['WORKSPACE_LISTBOX'].get()):
+                workspaceName = window['WORKSPACE_LISTBOX'].get()[0]
+            getPathsfromWorkspaceName(workspaceName)
+except Exception as e:
+    pysg.popup_error_with_traceback(
+        f'T\'as cassé ! Ne ferme pas et donne moi ces infos:', e)
