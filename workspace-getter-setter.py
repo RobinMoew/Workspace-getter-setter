@@ -118,6 +118,10 @@ def loadWorkspace():
 
 
 def getJsonFromFile():
+    if not os.path.exists('./workspaces.json'):
+        with open('./workspaces.json', 'w') as file:
+            file.write('{}')
+
     with open('./workspaces.json', 'r') as file:
         data = json.load(file)
         file.close()
