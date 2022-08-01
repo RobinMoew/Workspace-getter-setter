@@ -4,6 +4,8 @@ import os
 import PySimpleGUI as pysg
 import PySimpleGUIQt as sg
 
+from OpenFile import OpenFile
+
 
 class Listbox(sg.Listbox):
 
@@ -33,16 +35,16 @@ class Listbox(sg.Listbox):
             item = self.QT_ListWidget.itemAt(
                 e.pos().x(), e.pos().y()
             )
-            if None != item:
-                open_file(item.text())
+            if item is not None:
+                of.open_file(item.text())
 
-    def enable_drop(self):
+    def enableDrop(self):
         self.Widget.setAcceptDrops(True)
         self.Widget.dragEnterEvent = self.dragEnterEvent
         self.Widget.dragMoveEvent = self.dragMoveEvent
         self.Widget.dropEvent = self.dropEvent
 
-    def enable_double_click(self):
+    def enableDoubleClick(self):
         self.Widget.mouseDoubleClickEvent = self.doubleClickEvent
 
 
@@ -60,60 +62,37 @@ def search(values):
     path_results = []
 
 
-def open_file(file_name):
-    window['INFO'].update(
-        'Info: Ouverture du fichier: ' +
-        file_name, text_color='blue'
-    )
-    os.startfile(file_name)
-
-
-def open_selected():
-    for f in window['PATH_LISTBOX'].get():
-        open_file(f)
-
-
-def open_all():
-    for f in window['PATH_LISTBOX'].get_list_values():
-        open_file(f)
-
-
-def suppr_selected(listbox):
+def delete_selected(listbox):
     items = window[listbox].get_list_values()
-    selectedItems = window[listbox].get()
-    items = list(set(items) - set(selectedItems))
+    selected_items = window[listbox].get()
+    items = list(set(items) - set(selected_items))
     window[listbox].update(items)
-    if 'WORKSPACE_LISTBOX' == listbox and [] != selectedItems:
-        workspaces_results.remove(selectedItems[0])
+    if 'WORKSPACE_LISTBOX' == listbox and [] != selected_items:
+        workspaces_results.remove(selected_items[0])
         window['PATH_LISTBOX'].update([])
         window['INFO'].update(
-            'Info: "' + selectedItems[0] +
+            'Info: "' + selected_items[0] +
             '" supprimé', text_color='blue'
         )
-    listbox = ''
+        listbox = ''
 
 
-def addWorkspace(workspaceName):
+def addWorkspace(workspace_name):
     global workspaces_results
     window['WORKSPACE_LISTBOX'].update(values=workspaces_results)
 
-    if workspaceName not in workspaces_results:
-        workspaces_results.append(workspaceName)
+    if workspace_name not in workspaces_results:
+        workspaces_results.append(workspace_name)
         window['WORKSPACE_LISTBOX'].update(workspaces_results)
-    else:
-        window['INFO'].update(
-            'Erreur: "' + workspaceName +
-            '" déjà présent dans la liste', text_color='red'
-        )
 
 
 def saveWorkspace(workspace):
     if 'ADD' != event:
-        pathList = window['PATH_LISTBOX'].get_list_values()
+        path_list = window['PATH_LISTBOX'].get_list_values()
         data = getJsonFromFile()
-        workspaceWithPaths = {workspace: pathList}
-        data.update(workspaceWithPaths)
-        if [] == data[workspace]:
+        workspace_with_paths = {workspace: path_list}
+        data.update(workspace_with_paths)
+        if not data[workspace]:
             data.pop(workspace, '')
         with open('./workspaces.json', 'w') as file:
             json.dump(data, file)
@@ -160,12 +139,12 @@ layout = [
     [
         sg.Text('Workspaces', size=(11, 1)),
         sg.Button('+', size=(4, 1), key='ADD'),
-        sg.Button('-', size=(4, 1), key='SUPPR_WORKSPACE_LISTBOX'),
+        sg.Button('-', size=(4, 1), key='DELETE_WORKSPACE_LISTBOX'),
         sg.Text('', size=(1, 1)),
         sg.Text('Fichiers', size=(47.5, 1)),
         sg.Button('Ouvrir', size=(10, 1), key='OPEN'),
         sg.Button('Ouvrir tout', size=(10, 1), key='OPEN_ALL'),
-        sg.Button('Supprimer', size=(10, 1), key='SUPPR_PATH_LISTBOX')
+        sg.Button('Supprimer', size=(10, 1), key='DELETE_PATH_LISTBOX')
     ],
     [
         Listbox(
@@ -195,10 +174,10 @@ window = sg.Window(
     'Work spaces', layout=layout,
     finalize=True, return_keyboard_events=True
 )
-window['WORKSPACE_LISTBOX'].enable_double_click()
-window['PATH_LISTBOX'].enable_drop()
-window['PATH_LISTBOX'].enable_double_click()
-
+window['WORKSPACE_LISTBOX'].enableDoubleClick()
+window['PATH_LISTBOX'].enableDrop()
+window['PATH_LISTBOX'].enableDoubleClick()
+of = OpenFile(window)
 loadWorkspace()
 
 try:
@@ -219,13 +198,13 @@ try:
             if '' != workspaceName:
                 addWorkspace(workspaceName)
         if event == 'OPEN':
-            open_selected()
+            of.open_selected()
         if event == 'OPEN_ALL':
-            open_all()
-        if event in ('SUPPR_PATH_LISTBOX', 'SUPPR_WORKSPACE_LISTBOX'):
+            of.open_all()
+        if event in ('DELETE_PATH_LISTBOX', 'DELETE_WORKSPACE_LISTBOX'):
             if window['WORKSPACE_LISTBOX'].get():
                 workspaceName = window['WORKSPACE_LISTBOX'].get()[0]
-                suppr_selected(event.removeprefix('SUPPR_'))
+                delete_selected(event.removeprefix('DELETE_'))
                 saveWorkspace(workspaceName)
         if event == 'WORKSPACE_LISTBOX':
             if window['WORKSPACE_LISTBOX'].get():
